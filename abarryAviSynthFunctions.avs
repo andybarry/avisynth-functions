@@ -20,6 +20,15 @@ function AddBlankAudio(clip v, int rate)
     return AudioDub(v, blankAudio)
 }
 
+function ImportPng(string filename, int length)
+{
+    imageClip = ImageSource(filename, end=length)
+    imageClip = imageClip.ConvertToYV12()
+    imageClip = imageClip.AssumeFPS(30)
+
+    return imageClip
+}
+
 function slowmo_50(clip v, float framerate)
 {
     v=assumeTFF(v)
