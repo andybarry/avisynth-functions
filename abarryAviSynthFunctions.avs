@@ -1,4 +1,4 @@
-
+# use: import("abarryAviSynthFunctions.avs")
 ########### functions ################
 
 
@@ -7,11 +7,6 @@ function ConvertFramerate(clip v, float framerateIn, float framerateOut)
     v = v.AssumeFPS(framerateIn)
     v = v.ChangeFPS(framerateOut)
     return v
-}
-function slow50(clip v, float framerate)
-{
-    v = v.assumeFPS(framerate/2)
-    return v.changeFPS(framerate)
 }
 
 function AddBlankAudio(clip v, int rate)
@@ -27,14 +22,6 @@ function ImportPng(string filename, int length)
     imageClip = imageClip.AssumeFPS(30)
 
     return imageClip
-}
-
-function slowmo_50(clip v, float framerate)
-{
-    v=assumeTFF(v)
-    v=bob(v)
-
-    return v.assumefps(framerate)
 }
 
 function ConvertFormat(clip v, int width, int height, float framerate, int audiorate)
@@ -133,19 +120,35 @@ function TransitionBuildOut(clip v, float endingFactor, float timeFactor)
 }
 
 ##
+## Simple slow-mo
+##
+## v:          video clip
+## timefactor: multiplier on speed (ie 0.25 for quarter speed)
+##
+function SlowMo(clip v, float time_factor)
+{
+    return TransitionSlowMoWorker(v, 0, v.framecount, time_factor)
+}
+
+##
 ## Smoothly slows down and speeds up the video around the given frames
 ##
-function TransitionSlowMo(clip v, int frameStartIn, int frameEndIn, float timeFactor, early_amount)
+## v:              video clip
+## frame_start:    frame to start slowing down at
+## frame_end:      frame to stop the slow-mo at
+## time_factor:    multiplier on speed (ie 0.25 for quarter speed)
+## early_amount:   number of frames to spend transitioning into and out of slow-mo
+function TransitionSlowMo(clip v, int frame_start, int frame_end, float time_factor, early_amount)
 {
     # slow down at frameStart
 
-    frameEnd = (frameEndIn == 0) ? v.framecount : frameEndIn
-    frameStart = (frameStartIn == 0) ? 1 : frameStartIn
+    frameEnd = (frame_end == 0) ? v.framecount : frame_end
+    frameStart = (frame_start == 0) ? 1 : frame_start
 
 
-    transitionIn = TransitionBuild(Trim(v, frameStart, frameStart + early_amount), timeFactor, 1)
+    transitionIn = TransitionBuild(Trim(v, frameStart, frameStart + early_amount), time_factor, 1)
 
-    slow = TransitionSlowMoWorker(v, frameStart + early_amount, frameEnd - early_amount, timeFactor)
+    slow = TransitionSlowMoWorker(v, frameStart + early_amount, frameEnd - early_amount, time_factor)
 
     front = Trim(v, 0, frameStart)
 
@@ -153,7 +156,7 @@ function TransitionSlowMo(clip v, int frameStartIn, int frameEndIn, float timeFa
 
 
 
-    transitionOutAndBack = (frameEndIn == 0) ? back : TransitionBuildOut(Trim(v, frameEnd - early_amount, frameEnd), timeFactor, 1) + back
+    transitionOutAndBack = (frame_end == 0) ? back : TransitionBuildOut(Trim(v, frameEnd - early_amount, frameEnd), time_factor, 1) + back
 
     return front + transitionIn + slow + transitionOutAndBack
 
