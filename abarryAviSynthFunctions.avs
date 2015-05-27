@@ -55,7 +55,7 @@ function ConvertFormat(clip v, int width, int height, float framerate, int audio
 
 }
 
-function TransitionSlowMoWorker(clip v, int frameStart, int frameEnd, float timeFactor)
+function TransitionSlowMoWorker(clip v, int frameStart, int frameEnd, float timeFactor, bool apply_text)
 {
     slow = Trim(v, frameStart, frameEnd)
 
@@ -71,7 +71,7 @@ function TransitionSlowMoWorker(clip v, int frameStart, int frameEnd, float time
 
     widthFactor = (float(v.width) / float(v.height) > 1.6) ? 0.85 : 0.8
 
-    slow = Subtitle(slow, stringSpeed, int(v.width*widthFactor), int(v.height *.85), font="Agency FB", text_color=$00ffffff, halo_color=$ff000000, size=fontsize)
+    slow = (apply_text == true) ? Subtitle(slow, stringSpeed, int(v.width*widthFactor), int(v.height *.85), font="Agency FB", text_color=$00ffffff, halo_color=$ff000000, size=fontsize) : slow
 
     # debug subtitle
     #slow = Subtitle(slow, String(newFramerate), 200, 100, font="Agency FB", text_color=$00ffffff, halo_color=$ff000000, size=75)
@@ -81,7 +81,7 @@ function TransitionSlowMoWorker(clip v, int frameStart, int frameEnd, float time
 }
 
 
-function TransitionBuild(clip v, float endingFactor, float timeFactor)
+function TransitionBuild(clip v, float endingFactor, float timeFactor, bool apply_text)
 {
     # what is this going to look like?
     #
@@ -93,14 +93,14 @@ function TransitionBuild(clip v, float endingFactor, float timeFactor)
 
     thisRate = (endingFactor >= timeFactor/2.0) ? endingFactor : timeFactor/2.0
 
-    front = TransitionSlowMoWorker(v, 0, v.framecount/2, thisRate)
+    front = TransitionSlowMoWorker(v, 0, v.framecount/2, thisRate, apply_text)
 
     back = Trim(v, v.framecount/2 + 1, 0)
 
-    return (endingFactor >= timeFactor) ? front : front + TransitionBuild(back, endingFactor, thisRate)
+    return (endingFactor >= timeFactor) ? front : front + TransitionBuild(back, endingFactor, thisRate, apply_text)
 }
 
-function TransitionBuildOut(clip v, float endingFactor, float timeFactor)
+function TransitionBuildOut(clip v, float endingFactor, float timeFactor, bool apply_text)
 {
     # what is this going to look like?
     #
@@ -114,7 +114,7 @@ function TransitionBuildOut(clip v, float endingFactor, float timeFactor)
 
     front = Trim(v, 0, v.framecount/2)
 
-    back = TransitionSlowMoWorker(v, v.framecount/2, 0, thisRate)
+    back = TransitionSlowMoWorker(v, v.framecount/2, 0, thisRate, apply_text)
 
     return (endingFactor >= timeFactor) ? back : TransitionBuildOut(front, endingFactor, thisRate) + back
 }
@@ -125,9 +125,9 @@ function TransitionBuildOut(clip v, float endingFactor, float timeFactor)
 ## v:          video clip
 ## timefactor: multiplier on speed (ie 0.25 for quarter speed)
 ##
-function SlowMo(clip v, float time_factor)
+function SlowMo(clip v, float time_factor, bool apply_text)
 {
-    return TransitionSlowMoWorker(v, 0, v.framecount, time_factor)
+    return TransitionSlowMoWorker(v, 0, v.framecount, time_factor, apply_text)
 }
 
 ##
@@ -138,7 +138,8 @@ function SlowMo(clip v, float time_factor)
 ## frame_end:               frame to stop the slow-mo at (0 for end of clip)
 ## time_factor:             multiplier on speed (ie 0.25 for quarter speed)
 ## num_transition_frames:   number of frames to spend transitioning into and out of slow-mo
-function TransitionSlowMo(clip v, int frame_start, int frame_end, float time_factor, num_transition_frames)
+## apply_text:              true to add text to the corner displaying the time factor
+function TransitionSlowMo(clip v, int frame_start, int frame_end, float time_factor, num_transition_frames, bool apply_text)
 {
     # slow down at frameStart
 
@@ -148,9 +149,9 @@ function TransitionSlowMo(clip v, int frame_start, int frame_end, float time_fac
     num_transition_frames_at_end = (frame_end == 0) ? 0 : num_transition_frames
 
 
-    transitionIn = TransitionBuild(Trim(v, frameStart, frameStart + num_transition_frames), time_factor, 1)
+    transitionIn = TransitionBuild(Trim(v, frameStart, frameStart + num_transition_frames), time_factor, 1, apply_text)
 
-    slow = TransitionSlowMoWorker(v, frameStart + num_transition_frames, frameEnd - num_transition_frames_at_end, time_factor)
+    slow = TransitionSlowMoWorker(v, frameStart + num_transition_frames, frameEnd - num_transition_frames_at_end, time_factor, apply_text)
 
     front = Trim(v, 0, frameStart)
 
@@ -159,7 +160,7 @@ function TransitionSlowMo(clip v, int frame_start, int frame_end, float time_fac
 
     # if frame_end == 0, then there should be no frames after the slow-mo since the
     # entire end of the clip is slow-mo
-    slowAndTransitionOut = (frame_end == 0) ? slow : slow + TransitionBuildOut(Trim(v, frameEnd - num_transition_frames, frameEnd), time_factor, 1) + back
+    slowAndTransitionOut = (frame_end == 0) ? slow : slow + TransitionBuildOut(Trim(v, frameEnd - num_transition_frames, frameEnd, apply_text), time_factor, 1) + back
 
     return front + transitionIn + slowAndTransitionOut
 
