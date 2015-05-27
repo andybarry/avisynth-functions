@@ -133,32 +133,35 @@ function SlowMo(clip v, float time_factor)
 ##
 ## Smoothly slows down and speeds up the video around the given frames
 ##
-## v:              video clip
-## frame_start:    frame to start slowing down at
-## frame_end:      frame to stop the slow-mo at
-## time_factor:    multiplier on speed (ie 0.25 for quarter speed)
-## early_amount:   number of frames to spend transitioning into and out of slow-mo
-function TransitionSlowMo(clip v, int frame_start, int frame_end, float time_factor, early_amount)
+## v:                       video clip
+## frame_start:             frame to start slowing down at
+## frame_end:               frame to stop the slow-mo at (0 for end of clip)
+## time_factor:             multiplier on speed (ie 0.25 for quarter speed)
+## num_transition_frames:   number of frames to spend transitioning into and out of slow-mo
+function TransitionSlowMo(clip v, int frame_start, int frame_end, float time_factor, num_transition_frames)
 {
     # slow down at frameStart
 
     frameEnd = (frame_end == 0) ? v.framecount : frame_end
     frameStart = (frame_start == 0) ? 1 : frame_start
 
+    num_transition_frames_at_end = (frame_end == 0) ? 0 : num_transition_frames
 
-    transitionIn = TransitionBuild(Trim(v, frameStart, frameStart + early_amount), time_factor, 1)
 
-    slow = TransitionSlowMoWorker(v, frameStart + early_amount, frameEnd - early_amount, time_factor)
+    transitionIn = TransitionBuild(Trim(v, frameStart, frameStart + num_transition_frames), time_factor, 1)
+
+    slow = TransitionSlowMoWorker(v, frameStart + num_transition_frames, frameEnd - num_transition_frames_at_end, time_factor)
 
     front = Trim(v, 0, frameStart)
 
     back = Trim(v, frameEnd, 0)
 
 
+    # if frame_end == 0, then there should be no frames after the slow-mo since the
+    # entire end of the clip is slow-mo
+    slowAndTransitionOut = (frame_end == 0) ? slow : slow + TransitionBuildOut(Trim(v, frameEnd - num_transition_frames, frameEnd), time_factor, 1) + back
 
-    transitionOutAndBack = (frame_end == 0) ? back : TransitionBuildOut(Trim(v, frameEnd - early_amount, frameEnd), time_factor, 1) + back
-
-    return front + transitionIn + slow + transitionOutAndBack
+    return front + transitionIn + slowAndTransitionOut
 
 }
 
